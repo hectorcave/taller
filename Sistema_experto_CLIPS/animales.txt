@@ -1,0 +1,113 @@
+(deftemplate node
+(slot nombre)
+(slot tipo)
+(slot pregunta)
+(slot respuesta-si)
+(slot respuesta-no)
+(slot respuesta))
+
+(deffunction prepara-inicio
+(?nombre ?tipo ?pregunta ?respuesta-si ?respuesta-no ?respuesta)
+(assert (node (nombre ?nombre)(tipo ?tipo)(pregunta ?pregunta)(respuesta-si ?respuesta-si)(respuesta-no ?respuesta-no)(respuesta ?respuesta))))
+
+(defrule create-first-animals 
+(not (respuesta ?))
+=>
+(prepara-inicio raiz decision "el animal es de sangre caliente" node1 node2 nill)
+(prepara-inicio node1 respuesta nil nil nil perro)
+(prepara-inicio node2 respuesta nil nil nil rana)
+)
+
+(defrule initial-pos
+=>
+(assert (estado-actual raiz))
+)
+
+(defrule pregunta-al-usuario
+?estado <- (estado-actual ?nombre)
+(node (nombre ?nombre)(tipo decision)(pregunta ?pregunta))
+(not (respuesta ?))
+=>
+(printout t ?pregunta "? (si/no) " crlf)
+(assert (respuesta (read)))
+)
+
+(defrule proceder-opcion-si
+?estado <- (estado-actual ?nombre)
+(node (nombre ?nombre)(tipo decision)(respuesta-si ?despliegue-si))
+?respuesta <- (respuesta si)
+=>
+(retract ?estado ?respuesta)
+(assert (estado-actual ?despliegue-si))
+)
+
+(defrule proceder-opcion-no
+?estado <-(estado-actual ?nombre)
+(node (nombre ?nombre)(tipo decision)(respuesta-no ?despliegue-no))
+?respuesta<-(respuesta no)
+=>
+(retract ?estado ?respuesta)
+(assert (estado-actual ?despliegue-no))
+)
+
+(defrule pregunta-estado-actual-verdadero
+?estado <- (estado-actual ?nombre)
+(node (nombre ?nombre)(tipo respuesta)(respuesta ?valor))
+(not (respuesta ?))
+=>
+(printout t "Es un: " ?valor "? (si/no)" crlf)
+(assert (respuesta(read)))
+)
+
+(defrule estado-actual-correcto
+?estado <-(estado-actual ?nombre)
+(node (nombre ?nombre)(tipo respuesta))
+?respuesta <-(respuesta si)
+=>
+(assert (nuevo-intento))
+(retract ?estado ?respuesta))
+
+(defrule estado-actual-incorrecto
+?estado <-(estado-actual ?nombre)
+(node (nombre ?nombre)(tipo respuesta))
+?respuesta <-(respuesta no)
+=>
+(assert (crear-nuevo-elemento-animal ?nombre))
+(retract ?respuesta ?estado))
+
+(defrule nuevo-intento
+(nuevo-intento)(not (respuesta ?))
+=>
+(printout t "Juego terminado, desea intentar nuevamente? (si/no)"crlf)
+(assert (respuesta (read))))
+
+(defrule empezando-de-nuevo
+?sesion <- (nuevo-intento)
+?respuesta <-(respuesta si)
+=>
+(retract ?sesion ?respuesta)
+(assert (estado-actual raiz)))
+
+(defrule juego-terminado
+?sesion <- (nuevo-intento)
+?respuesta <- (respuesta no)
+=>
+(retract ?sesion ?respuesta)
+(printout t "GAME OVER" crlf))
+
+(defrule crear-nuevo-elemento-animal
+?sesion <- (crear-nuevo-elemento-animal ?nombre)
+?informacion <- (node (nombre ?nombre)(tipo respuesta)(respuesta ?valor))
+=>
+(retract ?sesion)
+(printout t "Como se llama el animal?"crlf)(bind ?animal-nuevo(read))
+(printout t "Escriba la caracteristica que distinga a un(a) "?animal-nuevo" de un "?valor " " crlf)(bind ?pregunta (readline))
+(printout t "animal agregado: " ?animal-nuevo ", con la caracteristica: " ?pregunta crlf)
+(bind ?nuevo-estado (gensym*))
+(bind ?nuevo-estado2 (gensym*))
+(modify ?informacion (tipo decision)
+(pregunta ?pregunta)(respuesta-si ?nuevo-estado)(respuesta-no ?nuevo-estado2))
+(assert(node(nombre ?nuevo-estado2)(tipo respuesta)(respuesta ?valor)))
+(assert(node(nombre ?nuevo-estado)(tipo respuesta)(respuesta ?animal-nuevo)))
+(assert(nuevo-intento))
+)
